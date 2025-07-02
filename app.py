@@ -206,9 +206,10 @@ def webhook():
         # Verificação do webhook
         token = request.args.get('hub.verify_token')
         challenge = request.args.get('hub.challenge')
-        
-        if token == VERIFY_TOKEN:
-            return challenge
+        mode = request.args.get('hub.mode')
+
+        if token == VERIFY_TOKEN and mode == "subscribe":
+            return str(challenge), 200  # <- CORRETO: responde com texto + código 200
         return 'Token inválido', 403
 
     elif request.method == 'POST':
@@ -227,6 +228,7 @@ def webhook():
                                     processar_mensagem(message, value)
         
         return 'OK', 200
+
 
 def processar_mensagem(message, value):
     try:
