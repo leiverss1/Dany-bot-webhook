@@ -1,3 +1,5 @@
+PHONE_NUMBER_ID = os.environ.get('PHONE_NUMBER_ID')
+url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
 from dotenv import load_dotenv
 load_dotenv()
 from flask import Flask, request, jsonify
