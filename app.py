@@ -1,2 +1,157 @@
 # app.py
-from flask import Flask, request, jsonify import os import requests import json from datetime import datetime import random app = Flask(__name__) # Configurações FACEBOOK_ACCESS_TOKEN = os.environ.get('EAAVik7hYLWMBPGzvLo7A0yCkboNAwZCOZA7ZCedWbSJqagxviEr0gxFQgebZBelZAt2naIvcLR4eXfvXdngXigcKVnCqlz0Rr2ZCgAEB4fImJYfO751z96OTJOFAwe8sVHW8Wc1ZCL7aRGw94ywCfIYmQeU7rUVxwPzSMuhFtfddW0C2O4wbgWvaV1jSPNvABxBSccP8pGz8CDpIjklOAOwRBeUuGZBYPPjZBZA0jG8uZAQVdjOb4K1JgZA8Wvs9b7mxufYZD') WEBHOOK_VERIFY_TOKEN = os.environ.get('WEBHOOK_VERIFY_2024', 'DANY_WEBHOOK_2024') WHATSAPP_NUMBER = os.environ.get('WHATSAPP_NUMBER', '5511970241011') # Links de afiliado AFFILIATE_LINKS = { 'sb2_turbo': 'https://mmecoserv.com/sb2turbo', 'sb2_black': 'https://mmecoserv.com/sb2black' } # Personalidade da Dany DANY_PERSONALITY = { 'name': 'Dany', 'role': 'Especialista em Emagrecimento e Coach de Bem-estar', 'tone': 'amigável, motivadora e profissional', 'expertise': 'produtos naturais para emagrecimento, SB2 Turbo e SB2 Black' } # Função para log def log_message(message, level="INFO"): timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S") print(f"[{timestamp}] [{level}] {message}") # Função para enviar mensagem via WhatsApp def send_whatsapp_message(recipient, message): url = f"https://graph.facebook.com/v18.0/{WHATSAPP_NUMBER}/messages" headers = { 'Authorization': f'Bearer {FACEBOOK_ACCESS_TOKEN}', 'Content-Type': 'application/json' } data = { 'messaging_product': 'whatsapp', 'to': recipient, 'type': 'text', 'text': {'body': message} } try: response = requests.post(url, headers=headers, json=data) response.raise_for_status() log_message(f"Mensagem enviada para {recipient}: {response.status_code}") return response.json() except Exception as e: log_message(f"Erro ao enviar mensagem: {str(e)}", "ERROR") return None # Função para processar mensagens da Dany def process_dany_message(sender, message_text): """Processa mensagens e gera respostas da Dany""" message_lower = message_text.lower() # Saudação inicial if any(word in message_lower for word in ['oi', 'olá', 'ola', 'hey', 'bom dia', 'boa tarde', 'boa noite']): return f"""Olá! 👋 Eu sou a Dany, sua especialista em emagrecimento! 🌟 Estou aqui para te ajudar a conquistar o corpo dos seus sonhos de forma natural e saudável! Trabalho com os produtos mais eficazes do mercado: • SB2 Turbo - Fórmula acelerada • SB2 Black - Fórmula premium Qual é o seu objetivo principal? 1️⃣ Perder peso rapidamente 2️⃣ Reduzir medidas 3️⃣ Controlar a fome 4️⃣ Aumentar energia e disposição Me conte sobre você! 😊""" # Interesse em produtos elif any(word in message_lower for word in ['produto', 'emagrecer', 'perder peso', 'sb2', 'turbo', 'black']): return f"""Perfeito! Vou te apresentar nossos produtos campeões de vendas! 🏆 🚀 **SB2 TURBO** - Fórmula Acelerada • Controla o apetite naturalmente • Acelera o metabolismo • Aumenta energia e disposição • Resultados em 15 dias • Preço promocional: 12x no cartão 🖤 **SB2 BLACK** - Fórmula Premium • Fórmula mais concentrada • Queima gordura localizada • Reduz medidas rapidamente • Includes e-books exclusivos • Grupo VIP de acompanhamento Qual desperta mais seu interesse? Digite 1 para SB2 Turbo ou 2 para SB2 Black""" # SB2 Turbo elif '1' in message_text or 'turbo' in message_lower: return f"""Excelente escolha! 🚀 O SB2 Turbo é nosso bestseller! ✨ **PRINCIPAIS BENEFÍCIOS:** • Controle total da fome e compulsão • Acelera metabolismo em até 300% • Aumenta energia naturalmente • Reduz medidas de forma acelerada • Ingredientes 100% naturais 🎯 **RESULTADOS COMPROVADOS:** • 95% dos usuários perdem peso nos primeiros 15 dias • Redução média de 3-5kg no primeiro mês • Maior disposição e energia 💰 **OFERTA ESPECIAL:** • Parcelamento em 12x sem juros • Frete grátis para todo Brasil • Garantia de 90 dias Quer garantir o seu SB2 Turbo agora? {AFFILIATE_LINKS['sb2_turbo']} Clique no link e aproveite! 🔗""" # SB2 Black elif '2' in message_text or 'black' in message_lower: return f"""Perfeita escolha! 🖤 O SB2 Black é nossa fórmula premium! 🏆 **FÓRMULA PREMIUM:** • Concentração 2x mais potente • Queima gordura localizada • Reduz medidas rapidamente • Firmeza e elasticidade da pele • Resultados em 7 dias 🎁 **BÔNUS EXCLUSIVOS:** • 2 E-books de emagrecimento • Grupo VIP com desafio 21 dias • Acompanhamento personalizado • Dicas diárias de motivação 💎 **INVESTIMENTO:** • Desconto especial hoje • Parcelamento facilitado • Garantia total de resultados Está pronta para a transformação? {AFFILIATE_LINKS['sb2_black']} Clique e garante já o seu! 🔗""" # Dúvidas sobre segurança elif any(word in message_lower for word in ['seguro', 'efeito colateral', 'natural', 'anvisa']): return f"""Pode ficar tranquila! 😊 Nossa prioridade é sua segurança! 🛡️ **SEGURANÇA GARANTIDA:** • Produtos 100% naturais • Aprovados pela ANVISA • Sem efeitos colaterais • Testados clinicamente • Milhares de clientes satisfeitas 🌿 **INGREDIENTES NATURAIS:** • Colágeno hidrolisado • Psyllium (fibra natural) • Spirulina (superalimento) • Sem químicos artificiais 📋 **CONTRAINDICAÇÕES:** • Gestantes e lactantes • Menores de 18 anos • Pessoas com alergia a algum componente Qual produto desperta seu interesse? 1️⃣ SB2 Turbo 2️⃣ SB2 Black""" # Preços elif any(word in message_lower for word in ['preço', 'valor', 'quanto custa', 'promoção']): return f"""Ótima pergunta! 💰 Temos condições especiais! 🚀 **SB2 TURBO:** • De R$ 1.014,00 por apenas 12x no cartão • Frete GRÁTIS • Garantia de 90 dias 🖤 **SB2 BLACK:** • Preço promocional especial • Parcelamento facilitado • Bônus exclusivos inclusos 🎯 **OFERTA RELÂMPAGO:** • Desconto especial hoje • Últimas unidades • Parcelamento sem juros Qual você escolhe para começar hoje? SB2 Turbo: {AFFILIATE_LINKS['sb2_turbo']} SB2 Black: {AFFILIATE_LINKS['sb2_black']}""" # Objeções comuns elif any(word in message_lower for word in ['caro', 'pensar', 'depois', 'não tenho dinheiro']): return f"""Entendo perfeitamente! 💝 Vou te ajudar a ver o valor real! 💡 **PENSE ASSIM:** • Quanto você gasta por mês com coisas desnecessárias? • Qual o valor da sua autoestima? • Quanto vale sua saúde e bem-estar? 📊 **COMPARAÇÃO:** • Academia: R$ 100/mês = R$ 1.200/ano • Nutricionista: R$ 200/consulta • Nosso produto: Menos de R$ 3/dia 🎁 **FACILIDADES:** • Parcelamento em 12x sem juros • Garantia total de 90 dias • Se não funcionar, devolvemos seu dinheiro ⏰ **URGÊNCIA:** Esta promoção acaba hoje! Não perca a chance de transformar sua vida! Qual produto você escolhe? {AFFILIATE_LINKS['sb2_turbo']} - SB2 Turbo {AFFILIATE_LINKS['sb2_black']} - SB2 Black""" # Depoimentos elif any(word in message_lower for word in ['depoimento', 'funciona', 'resultado', 'prova']): return f"""Claro! 🌟 Nossos resultados falam por si! 👥 **DEPOIMENTOS REAIS:** 💬 "Perdi 8kg em 2 meses com SB2 Turbo! Me sinto outra pessoa!" - Maria, 34 anos 💬 "SB2 Black mudou minha vida! 12kg a menos e muito mais disposição!" - Ana, 28 anos 💬 "Finalmente encontrei algo que funciona! Recomendo para todas!" - Carla, 41 anos 📈 **NÚMEROS COMPROVADOS:** • 95% de satisfação dos clientes • Mais de 50.000 pessoas transformadas • 4.8 estrelas de avaliação média 🏆 **RESULTADOS MÉDIOS:** • 3-5kg no primeiro mês • Redução de 2-3 manequins • Mais energia e disposição Pronta para ser a próxima história de sucesso? {AFFILIATE_LINKS['sb2_turbo']} - SB2 Turbo {AFFILIATE_LINKS['sb2_black']} - SB2 Black""" # Mensagem padrão else: return f"""Obrigada por me procurar! 😊 Sou a Dany, sua especialista em emagrecimento! Estou aqui para te ajudar a conquistar o corpo dos seus sonhos! 🎯 **Como posso te ajudar?** • Produtos para emagrecimento • Dicas de alimentação • Plano personalizado • Acompanhamento completo 💪 **Nossos produtos:** • SB2 Turbo - Fórmula acelerada • SB2 Black - Fórmula premium Digite sua dúvida ou interesse que vou te ajudar pessoalmente! {AFFILIATE_LINKS['sb2_turbo']} - SB2 Turbo {AFFILIATE_LINKS['sb2_black']} - SB2 Black""" # Rota para verificação do webhook @app.route('/webhook', methods=['GET']) def verify_webhook(): """Verificação do webhook pelo Facebook""" try: mode = request.args.get('hub.mode') token = request.args.get('hub.verify_token') challenge = request.args.get('hub.challenge') log_message(f"Verificação webhook - Mode: {mode}, Token: {token}") if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN: log_message("Webhook verificado com sucesso!") return challenge else: log_message("Falha na verificação do webhook", "ERROR") return "Forbidden", 403 except Exception as e: log_message(f"Erro na verificação: {str(e)}", "ERROR") return "Internal Server Error", 500 # Rota para receber mensagens @app.route('/webhook', methods=['POST']) def handle_webhook(): """Processa mensagens recebidas do WhatsApp""" try: data = request.get_json() log_message(f"Webhook recebido: {json.dumps(data, indent=2)}") if data.get('object') == 'whatsapp_business_account': entries = data.get('entry', []) for entry in entries: changes = entry.get('changes', []) for change in changes: if change.get('field') == 'messages': messages = change.get('value', {}).get('messages', []) for message in messages: sender = message.get('from') message_text = message.get('text', {}).get('body', '') message_type = message.get('type') log_message(f"Mensagem de {sender}: {message_text}") if message_type == 'text' and message_text: # Processar mensagem com a Dany response = process_dany_message(sender, message_text) if response: send_whatsapp_message(sender, response) log_message(f"Resposta enviada para {sender}") return jsonify({"status": "success"}), 200 except Exception as e: log_message(f"Erro no webhook: {str(e)}", "ERROR") return jsonify({"error": str(e)}), 500 # Rota de saúde @app.route('/health', methods=['GET']) def health_check(): """Verificação de saúde da aplicação""" return jsonify({ "status": "healthy", "timestamp": datetime.now().isoformat(), "webhook_token": WEBHOOK_VERIFY_TOKEN, "whatsapp_number": WHATSAPP_NUMBER }) # Rota raiz @app.route('/') def index(): """Página inicial da aplicação""" return jsonify({ "message": "Dany WhatsApp Bot está funcionando!", "status": "active", "endpoints": { "webhook": "/webhook", "health": "/health" } }) if __name__ == '__main__': port = int(os.environ.get('PORT', 10000)) app.run(host='0.0.0.0', port=port, debug=False)
+from flask import Flask, request, jsonify
+import os
+import requests
+import json
+from datetime import datetime
+
+app = Flask(__name__)
+
+# Configurações
+FACEBOOK_ACCESS_TOKEN = os.environ.get('FACEBOOK_ACCESS_TOKEN')
+WEBHOOK_VERIFY_TOKEN = os.environ.get('WEBHOOK_VERIFY_2024', 'DANY_WEBHOOK_2024')
+WHATSAPP_NUMBER = os.environ.get('WHATSAPP_NUMBER', '5511970241011')
+
+# Links de afiliado
+AFFILIATE_LINKS = {
+    'sb2_turbo': 'https://mmecoserv.com/sb2turbo',
+    'sb2_black': 'https://mmecoserv.com/sb2black'
+}
+
+# Personalidade da Dany
+DANY_PERSONALITY = {
+    'name': 'Dany',
+    'role': 'Especialista em Emagrecimento e Coach de Bem-estar',
+    'tone': 'amigável, motivadora e profissional',
+    'expertise': 'produtos naturais para emagrecimento, SB2 Turbo e SB2 Black'
+}
+
+# Função de log
+def log_message(message, level="INFO"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] [{level}] {message}")
+
+# Função para enviar mensagens no WhatsApp
+def send_whatsapp_message(recipient, message):
+    url = f"https://graph.facebook.com/v18.0/{WHATSAPP_NUMBER}/messages"
+    headers = {
+        'Authorization': f'Bearer {FACEBOOK_ACCESS_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        'messaging_product': 'whatsapp',
+        'to': recipient,
+        'type': 'text',
+        'text': {'body': message}
+    }
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        log_message(f"Mensagem enviada para {recipient}: {response.status_code}")
+        return response.json()
+    except Exception as e:
+        log_message(f"Erro ao enviar mensagem: {str(e)}", "ERROR")
+        return None
+
+# Função para processar mensagens recebidas
+def process_dany_message(sender, message_text):
+    message_lower = message_text.lower()
+    
+    if any(word in message_lower for word in ['oi', 'olá', 'ola', 'hey', 'bom dia', 'boa tarde', 'boa noite']):
+        return """..."""  # Use o conteúdo detalhado do seu texto original
+
+    elif any(word in message_lower for word in ['produto', 'emagrecer', 'perder peso', 'sb2', 'turbo', 'black']):
+        return """..."""
+
+    elif '1' in message_text or 'turbo' in message_lower:
+        return f"""Excelente escolha! 🚀 O SB2 Turbo é nosso bestseller! ... {AFFILIATE_LINKS['sb2_turbo']}"""
+
+    elif '2' in message_text or 'black' in message_lower:
+        return f"""Perfeita escolha! 🖤 O SB2 Black é nossa fórmula premium! ... {AFFILIATE_LINKS['sb2_black']}"""
+
+    elif any(word in message_lower for word in ['seguro', 'efeito colateral', 'natural', 'anvisa']):
+        return """Pode ficar tranquila! 😊 Nossa prioridade é sua segurança! ..."""
+
+    elif any(word in message_lower for word in ['preço', 'valor', 'quanto custa', 'promoção']):
+        return f"""Ótima pergunta! 💰 Temos condições especiais! ... {AFFILIATE_LINKS['sb2_turbo']} {AFFILIATE_LINKS['sb2_black']}"""
+
+    elif any(word in message_lower for word in ['caro', 'pensar', 'depois', 'não tenho dinheiro']):
+        return f"""Entendo perfeitamente! 💝 ... {AFFILIATE_LINKS['sb2_turbo']} - SB2 Turbo {AFFILIATE_LINKS['sb2_black']} - SB2 Black"""
+
+    elif any(word in message_lower for word in ['depoimento', 'funciona', 'resultado', 'prova']):
+        return f"""Claro! 🌟 Nossos resultados falam por si! ... {AFFILIATE_LINKS['sb2_turbo']} - SB2 Turbo {AFFILIATE_LINKS['sb2_black']} - SB2 Black"""
+
+    else:
+        return f"""Obrigada por me procurar! 😊 Sou a Dany ... {AFFILIATE_LINKS['sb2_turbo']} - SB2 Turbo {AFFILIATE_LINKS['sb2_black']} - SB2 Black"""
+
+# Verificação do webhook
+@app.route('/webhook', methods=['GET'])
+def verify_webhook():
+    try:
+        mode = request.args.get('hub.mode')
+        token = request.args.get('hub.verify_token')
+        challenge = request.args.get('hub.challenge')
+        log_message(f"Verificação webhook - Mode: {mode}, Token: {token}")
+        if mode == 'subscribe' and token == WEBHOOK_VERIFY_TOKEN:
+            log_message("Webhook verificado com sucesso!")
+            return challenge
+        else:
+            log_message("Falha na verificação do webhook", "ERROR")
+            return "Forbidden", 403
+    except Exception as e:
+        log_message(f"Erro na verificação: {str(e)}", "ERROR")
+        return "Internal Server Error", 500
+
+# Recebimento de mensagens
+@app.route('/webhook', methods=['POST'])
+def handle_webhook():
+    try:
+        data = request.get_json()
+        log_message(f"Webhook recebido: {json.dumps(data, indent=2)}")
+        if data.get('object') == 'whatsapp_business_account':
+            entries = data.get('entry', [])
+            for entry in entries:
+                changes = entry.get('changes', [])
+                for change in changes:
+                    if change.get('field') == 'messages':
+                        messages = change.get('value', {}).get('messages', [])
+                        for message in messages:
+                            sender = message.get('from')
+                            message_text = message.get('text', {}).get('body', '')
+                            message_type = message.get('type')
+                            log_message(f"Mensagem de {sender}: {message_text}")
+                            if message_type == 'text' and message_text:
+                                response = process_dany_message(sender, message_text)
+                                if response:
+                                    send_whatsapp_message(sender, response)
+                                    log_message(f"Resposta enviada para {sender}")
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        log_message(f"Erro no webhook: {str(e)}", "ERROR")
+        return jsonify({"error": str(e)}), 500
+
+# Rota de verificação de saúde
+@app.route('/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "webhook_token": WEBHOOK_VERIFY_TOKEN,
+        "whatsapp_number": WHATSAPP_NUMBER
+    })
+
+# Rota principal
+@app.route('/')
+def index():
+    return jsonify({
+        "message": "Dany WhatsApp Bot está funcionando!",
+        "status": "active",
+        "endpoints": {
+            "webhook": "/webhook",
+            "health": "/health"
+        }
+    })
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
