@@ -55,6 +55,7 @@ def send_whatsapp_message(recipient, message):
         log_message(f"Erro ao enviar mensagem: {str(e)}", "ERROR")
         return None
 
+
 # Processa mensagens recebidas
 def process_dany_message(sender, message_text):
     message_lower = message_text.lower()
