@@ -1,5 +1,8 @@
+# app.py
+
 from dotenv import load_dotenv
 load_dotenv()
+
 from flask import Flask, request, jsonify
 import os
 import requests
@@ -8,7 +11,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Variáveis de ambiente
+# Carregar variáveis de ambiente
 FACEBOOK_ACCESS_TOKEN = os.environ.get('FACEBOOK_ACCESS_TOKEN')
 PHONE_NUMBER_ID = os.environ.get('PHONE_NUMBER_ID')
 WEBHOOK_VERIFY_TOKEN = os.environ.get('WEBHOOK_VERIFY_TOKEN', 'DANY_WEBHOOK_2024')
@@ -28,14 +31,14 @@ DANY_PERSONALITY = {
     'expertise': 'produtos naturais para emagrecimento, SB2 Turbo e SB2 Black'
 }
 
-# Função de log
+# Logger
 def log_message(message, level="INFO"):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] [{level}] {message}")
 
-# Função para enviar mensagens via WhatsApp
+# Enviar mensagem via WhatsApp API
 def send_whatsapp_message(recipient, message):
-    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
     headers = {
         'Authorization': f'Bearer {FACEBOOK_ACCESS_TOKEN}',
         'Content-Type': 'application/json'
@@ -46,17 +49,21 @@ def send_whatsapp_message(recipient, message):
         'type': 'text',
         'text': {'body': message}
     }
+
+    log_message(f"Enviando mensagem para {recipient}")
+    log_message(f"POST URL: {url}")
+    log_message(f"Token (parcial): {FACEBOOK_ACCESS_TOKEN[:20]}...")
+
     try:
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()
-        log_message(f"Mensagem enviada para {recipient}: {response.status_code}")
+        log_message(f"Mensagem enviada com sucesso! Status: {response.status_code}")
         return response.json()
     except Exception as e:
         log_message(f"Erro ao enviar mensagem: {str(e)}", "ERROR")
         return None
 
-
-# Processa mensagens recebidas
+# Processar mensagens com a Dany
 def process_dany_message(sender, message_text):
     message_lower = message_text.lower()
 
@@ -99,7 +106,7 @@ Digite o número (1 ou 2) ou o nome do produto para saber mais!"""
 🔹 SB2 Turbo: {AFFILIATE_LINKS['sb2_turbo']}
 🔹 SB2 Black: {AFFILIATE_LINKS['sb2_black']}"""
 
-# Verificação do webhook
+# Webhook verification (GET)
 @app.route('/webhook', methods=['GET'])
 def verify_webhook():
     mode = request.args.get('hub.mode')
@@ -112,12 +119,13 @@ def verify_webhook():
         log_message("Falha na verificação do webhook", "ERROR")
         return "Forbidden", 403
 
-# Recebimento de mensagens
+# Webhook receiver (POST)
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     try:
         data = request.get_json()
-        log_message(f"Webhook recebido: {json.dumps(data, indent=2)}")
+        log_message(f"Webhook recebido:\n{json.dumps(data, indent=2)}")
+
         if data.get('object') == 'whatsapp_business_account':
             for entry in data.get('entry', []):
                 for change in entry.get('changes', []):
@@ -127,9 +135,9 @@ def handle_webhook():
                             sender = message.get('from')
                             message_text = message.get('text', {}).get('body', '')
                             if message.get('type') == 'text' and message_text:
-                                response = process_dany_message(sender, message_text)
-                                if response:
-                                    send_whatsapp_message(sender, response)
+                                resposta = process_dany_message(sender, message_text)
+                                send_whatsapp_message(sender, resposta)
+
         return jsonify({"status": "success"}), 200
     except Exception as e:
         log_message(f"Erro no webhook: {str(e)}", "ERROR")
@@ -144,11 +152,11 @@ def health_check():
         "whatsapp_number": WHATSAPP_NUMBER
     })
 
-# Rota principal
+# Página inicial
 @app.route('/')
 def index():
     return jsonify({
-        "message": "Dany WhatsApp Bot está funcionando! 💬",
+        "message": "Dany WhatsApp Bot está rodando 💬",
         "status": "active",
         "endpoints": {
             "webhook": "/webhook",
@@ -156,6 +164,7 @@ def index():
         }
     })
 
+# Run app
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
