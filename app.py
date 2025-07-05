@@ -48,9 +48,8 @@ def send_whatsapp_message(recipient, message):
         'text': {'body': message}
     }
 
-    # Requisição com json=..., mas com conversão para string usando ensure_ascii=False
     try:
-        json_data = json.dumps(data, ensure_ascii=False)  # 👈 ESSENCIAL!
+        json_data = json.dumps(data, ensure_ascii=False)
         log_message(f"Payload que será enviado: {json_data}", "DEBUG")
 
         response = requests.post(url, headers=headers, data=json_data.encode('utf-8'))
@@ -127,20 +126,17 @@ def handle_webhook():
             for entry in data.get('entry', []):
                 for change in entry.get('changes', []):
                     value = change.get('value', {})
-                   messages = value.get('messages', [])
-for message in messages:
-    contacts = value.get("contacts", [])
-    sender = contacts[0].get("wa_id") if contacts else message.get('from')
-    message_text = message.get('text', {}).get('body', '')
-    
-    if message.get('type') == 'text' and message_text:
-        response = process_dany_message(sender, message_text)
-        if response:
-            send_whatsapp_message(sender, response)
-
+                    messages = value.get('messages', [])
+                    for message in messages:
+                        contacts = value.get("contacts", [])
+                        sender = contacts[0].get("wa_id") if contacts else message.get('from')
+                        message_text = message.get('text', {}).get('body', '')
+                        
+                        if message.get('type') == 'text' and message_text:
                             response = process_dany_message(sender, message_text)
                             if response:
                                 send_whatsapp_message(sender, response)
+
         return jsonify({"status": "success"}), 200
     except Exception as e:
         log_message(f"Erro no webhook: {str(e)}", "ERROR")
@@ -170,5 +166,6 @@ def index():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
+
 
 
