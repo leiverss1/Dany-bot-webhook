@@ -129,8 +129,9 @@ def handle_webhook():
                     value = change.get('value', {})
                     messages = value.get('messages', [])
                     for message in messages:
-                        sender = message.get('from')
-                        message_text = message.get('text', {}).get('body', '')
+                        contacts = value.get("contacts", [])
+sender = contacts[0].get("wa_id") if contacts else message.get('from')
+message_text = message.get('text', {}).get('body', '')
                         if message.get('type') == 'text' and message_text:
                             response = process_dany_message(sender, message_text)
                             if response:
