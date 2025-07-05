@@ -1,8 +1,5 @@
-# app.py
-
 from dotenv import load_dotenv
 load_dotenv()
-
 from flask import Flask, request, jsonify
 import os
 import requests
@@ -11,7 +8,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Carregar variáveis de ambiente
+# Variáveis de ambiente
 FACEBOOK_ACCESS_TOKEN = os.environ.get('FACEBOOK_ACCESS_TOKEN')
 PHONE_NUMBER_ID = os.environ.get('PHONE_NUMBER_ID')
 WEBHOOK_VERIFY_TOKEN = os.environ.get('WEBHOOK_VERIFY_TOKEN', 'DANY_WEBHOOK_2024')
@@ -31,14 +28,14 @@ DANY_PERSONALITY = {
     'expertise': 'produtos naturais para emagrecimento, SB2 Turbo e SB2 Black'
 }
 
-# Logger
+# Função de log
 def log_message(message, level="INFO"):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[{timestamp}] [{level}] {message}")
 
-# Enviar mensagem via WhatsApp API
+# Função para enviar mensagens via WhatsApp
 def send_whatsapp_message(recipient, message):
-    url = f"https://graph.facebook.com/v22.0/{PHONE_NUMBER_ID}/messages"
+    url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
     headers = {
         'Authorization': f'Bearer {FACEBOOK_ACCESS_TOKEN}',
         'Content-Type': 'application/json'
@@ -49,21 +46,16 @@ def send_whatsapp_message(recipient, message):
         'type': 'text',
         'text': {'body': message}
     }
-
-    log_message(f"Enviando mensagem para {recipient}")
-    log_message(f"POST URL: {url}")
-    log_message(f"Token (parcial): {FACEBOOK_ACCESS_TOKEN[:20]}...")
-
     try:
         response = requests.post(url, headers=headers, json=data)
+        log_message(f"Requisição enviada para {url} com status {response.status_code}")
         response.raise_for_status()
-        log_message(f"Mensagem enviada com sucesso! Status: {response.status_code}")
         return response.json()
     except Exception as e:
         log_message(f"Erro ao enviar mensagem: {str(e)}", "ERROR")
         return None
 
-# Processar mensagens com a Dany
+# Processa mensagens recebidas
 def process_dany_message(sender, message_text):
     message_lower = message_text.lower()
 
@@ -72,8 +64,8 @@ def process_dany_message(sender, message_text):
 
     elif any(word in message_lower for word in ['produto', 'emagrecer', 'perder peso', 'sb2', 'turbo', 'black']):
         return """Temos duas fórmulas incríveis para te ajudar:
-1️⃣ SB2 Turbo: fórmula para acelerar seu metabolismo.
-2️⃣ SB2 Black: fórmula premium com desintoxicação.
+1⃣ SB2 Turbo: fórmula para acelerar seu metabolismo.
+2⃣ SB2 Black: fórmula premium com desintoxicação.
 
 Digite o número (1 ou 2) ou o nome do produto para saber mais!"""
 
@@ -92,7 +84,7 @@ Digite o número (1 ou 2) ou o nome do produto para saber mais!"""
 🔹 SB2 Black: {AFFILIATE_LINKS['sb2_black']}"""
 
     elif any(word in message_lower for word in ['caro', 'pensar', 'depois', 'não tenho dinheiro']):
-        return f"""Entendo perfeitamente! 💝 Cuidar da saúde é um investimento, e quando você estiver pronta, estarei aqui. 
+        return f"""Entendo perfeitamente! 💕 Cuidar da saúde é um investimento, e quando você estiver pronta, estarei aqui. 
 🔹 SB2 Turbo: {AFFILIATE_LINKS['sb2_turbo']}
 🔹 SB2 Black: {AFFILIATE_LINKS['sb2_black']}"""
 
@@ -106,7 +98,7 @@ Digite o número (1 ou 2) ou o nome do produto para saber mais!"""
 🔹 SB2 Turbo: {AFFILIATE_LINKS['sb2_turbo']}
 🔹 SB2 Black: {AFFILIATE_LINKS['sb2_black']}"""
 
-# Webhook verification (GET)
+# Verificação do webhook
 @app.route('/webhook', methods=['GET'])
 def verify_webhook():
     mode = request.args.get('hub.mode')
@@ -119,25 +111,24 @@ def verify_webhook():
         log_message("Falha na verificação do webhook", "ERROR")
         return "Forbidden", 403
 
-# Webhook receiver (POST)
+# Recebimento de mensagens
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     try:
         data = request.get_json()
-        log_message(f"Webhook recebido:\n{json.dumps(data, indent=2)}")
-
+        log_message(f"Webhook recebido: {json.dumps(data, indent=2)}")
         if data.get('object') == 'whatsapp_business_account':
             for entry in data.get('entry', []):
                 for change in entry.get('changes', []):
-                    if change.get('field') == 'messages':
-                        messages = change.get('value', {}).get('messages', [])
-                        for message in messages:
-                            sender = message.get('from')
-                            message_text = message.get('text', {}).get('body', '')
-                            if message.get('type') == 'text' and message_text:
-                                resposta = process_dany_message(sender, message_text)
-                                send_whatsapp_message(sender, resposta)
-
+                    value = change.get('value', {})
+                    messages = value.get('messages', [])
+                    for message in messages:
+                        sender = message.get('from')
+                        message_text = message.get('text', {}).get('body', '')
+                        if message.get('type') == 'text' and message_text:
+                            response = process_dany_message(sender, message_text)
+                            if response:
+                                send_whatsapp_message(sender, response)
         return jsonify({"status": "success"}), 200
     except Exception as e:
         log_message(f"Erro no webhook: {str(e)}", "ERROR")
@@ -152,11 +143,11 @@ def health_check():
         "whatsapp_number": WHATSAPP_NUMBER
     })
 
-# Página inicial
+# Rota principal
 @app.route('/')
 def index():
     return jsonify({
-        "message": "Dany WhatsApp Bot está rodando 💬",
+        "message": "Dany WhatsApp Bot está funcionando! 💬",
         "status": "active",
         "endpoints": {
             "webhook": "/webhook",
@@ -164,8 +155,8 @@ def index():
         }
     })
 
-# Run app
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
+
 
