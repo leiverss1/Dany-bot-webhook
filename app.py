@@ -46,10 +46,14 @@ def send_whatsapp_message(recipient, message):
         'type': 'text',
         'text': {'body': message}
     }
+
+    # NOVO: Mostrar o payload antes do envio
+    log_message(f"Payload que será enviado: {json.dumps(data, indent=2)}", "DEBUG")
+
     try:
         response = requests.post(url, headers=headers, json=data)
-        log_message(f"Requisição enviada para {url} com status {response.status_code}")
         response.raise_for_status()
+        log_message(f"Mensagem enviada para {recipient}: {response.status_code}")
         return response.json()
     except Exception as e:
         log_message(f"Erro ao enviar mensagem: {str(e)}", "ERROR")
