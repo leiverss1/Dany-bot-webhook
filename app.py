@@ -127,12 +127,17 @@ def handle_webhook():
             for entry in data.get('entry', []):
                 for change in entry.get('changes', []):
                     value = change.get('value', {})
-                    messages = value.get('messages', [])
-                    for message in messages:
-                        contacts = value.get("contacts", [])
-sender = contacts[0].get("wa_id") if contacts else message.get('from')
-message_text = message.get('text', {}).get('body', '')
-                        if message.get('type') == 'text' and message_text:
+                   messages = value.get('messages', [])
+for message in messages:
+    contacts = value.get("contacts", [])
+    sender = contacts[0].get("wa_id") if contacts else message.get('from')
+    message_text = message.get('text', {}).get('body', '')
+    
+    if message.get('type') == 'text' and message_text:
+        response = process_dany_message(sender, message_text)
+        if response:
+            send_whatsapp_message(sender, response)
+
                             response = process_dany_message(sender, message_text)
                             if response:
                                 send_whatsapp_message(sender, response)
