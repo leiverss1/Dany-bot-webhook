@@ -40,6 +40,7 @@ def send_whatsapp_message(recipient, message):
         'Authorization': f'Bearer {FACEBOOK_ACCESS_TOKEN}',
         'Content-Type': 'application/json'
     }
+
     data = {
         'messaging_product': 'whatsapp',
         'to': recipient,
@@ -47,11 +48,12 @@ def send_whatsapp_message(recipient, message):
         'text': {'body': message}
     }
 
-    # NOVO: Mostrar o payload antes do envio
-    log_message(f"Payload que será enviado: {json.dumps(data, indent=2)}", "DEBUG")
-
+    # Requisição com json=..., mas com conversão para string usando ensure_ascii=False
     try:
-        response = requests.post(url, headers=headers, json=data)
+        json_data = json.dumps(data, ensure_ascii=False)  # 👈 ESSENCIAL!
+        log_message(f"Payload que será enviado: {json_data}", "DEBUG")
+
+        response = requests.post(url, headers=headers, data=json_data.encode('utf-8'))
         response.raise_for_status()
         log_message(f"Mensagem enviada para {recipient}: {response.status_code}")
         return response.json()
