@@ -51,7 +51,8 @@ def gerar_resposta_dany(pergunta):
         )
         return resposta.choices[0].message.content.strip()
     except Exception as e:
-        return f"Erro ao gerar resposta: {str(e)}"
+    print(f"[ERRO] Falha na geração de resposta: {str(e)}")
+    return "❌ Ocorreu um erro ao gerar a resposta. Tente novamente mais tarde."
 
 # Rodar localmente
 if __name__ == '__main__':
