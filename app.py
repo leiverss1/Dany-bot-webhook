@@ -43,13 +43,6 @@ def responder():
 def gerar_resposta_dany(pergunta):
     try:
         resposta = openai.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": "Você é Dany, uma consultora de emagrecimento atenciosa e alegre."},
-        {"role": "user", "content": pergunta}
-    ]
-)
-(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é Dany, uma consultora de emagrecimento atenciosa e alegre."},
@@ -59,7 +52,6 @@ def gerar_resposta_dany(pergunta):
         return resposta.choices[0].message.content.strip()
     except Exception as e:
         return f"Erro ao gerar resposta: {str(e)}"
-
 
 # Rodar localmente
 if __name__ == '__main__':
