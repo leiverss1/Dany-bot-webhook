@@ -42,8 +42,14 @@ def responder():
 # Função que chama a API da OpenAI
 def gerar_resposta_dany(pergunta):
     try:
-        client = openai.OpenAI()
-        resposta = client.chat.completions.create(
+        resposta = openai.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[
+        {"role": "system", "content": "Você é Dany, uma consultora de emagrecimento atenciosa e alegre."},
+        {"role": "user", "content": pergunta}
+    ]
+)
+(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é Dany, uma consultora de emagrecimento atenciosa e alegre."},
