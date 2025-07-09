@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import openai
 import os
 from datetime import datetime
+import re
 
 app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -22,38 +23,46 @@ def status():
 def responder():
     dados = request.get_json()
     pergunta = dados.get("mensagem", "")
+    usuario = dados.get("usuario", "anonimo")
 
     if not pergunta:
         return jsonify({"erro": "Mensagem vazia"}), 400
 
-    resposta = gerar_resposta_dany(pergunta, dados.get("usuario"))
+    resposta = gerar_resposta_dany(pergunta, usuario)
     return jsonify({"resposta": resposta})
 
-# Histórico simples por usuário
 usuarios = {}
+nomes_usuarios = {}
 
-# Função principal
 funil_boas_vindas = """
-Você é Dany 🏋️‍♀️, uma consultora de emagrecimento leve, simpática e vendedora. 
-Seu objetivo principal é vender os produtos **SB2 Turbo** e **SB2 Black**, explicando os benefícios com entusiasmo e naturalidade. 
-
-Ao conversar com o cliente, siga esse fluxo:
-
-1. Cumprimente de forma amigável apenas no primeiro contato. 
-2. Pergunte qual o objetivo da pessoa: emagrecer, ter mais energia, secar barriga?
-3. Apresente os produtos SB2 com foco no objetivo informado.
-4. Use provas sociais e frases motivadoras. Ex: "Tem gente que perdeu até 4kg na primeira semana!".
-5. Envie os links dos produtos no momento certo:
-   - SB2 Turbo: https://mmecoserv.com/sb2turbo
-   - SB2 Black: https://mmecoserv.com/sb2black
-6. Tire dúvidas e feche a venda de forma natural.
-7. Após a compra, ofereça acompanhamento com dicas motivacionais e alimentação para fidelizar o cliente.
-
-Seja simpática, divertida e com vibe de "amiga que entende do assunto". Mantenha o foco em conversão, mas sem pressão.
+Você é Dany 🏋️‍♀️, uma consultora de emagrecimento leve, simpática e vendedora.
+Seu objetivo principal é vender os produtos SB2 Turbo e SB2 Black, explicando os benefícios com entusiasmo e naturalidade.
+Sempre que souber o nome da cliente, use com carinho no início das respostas, como se fosse uma amiga acompanhando a jornada dela.
 """
 
-def gerar_resposta_dany(pergunta, usuario=None):
+def extrair_nome(mensagem):
+    padroes = [
+        r"me chamo ([a-zA-Zà-ü]+)",
+        r"sou a ([a-zA-Zà-ü]+)",
+        r"aqui é a ([a-zA-Zà-ü]+)",
+        r"meu nome é ([a-zA-Zà-ü]+)"
+    ]
+    for padrao in padroes:
+        match = re.search(padrao, mensagem.lower())
+        if match:
+            nome = match.group(1).capitalize()
+            return nome
+    return None
+
+def gerar_resposta_dany(pergunta, usuario):
     try:
+        nome_detectado = extrair_nome(pergunta)
+        if nome_detectado:
+            nomes_usuarios[usuario] = nome_detectado
+
+        nome_cliente = nomes_usuarios.get(usuario)
+        saudacao_nome = f"{nome_cliente}, " if nome_cliente else ""
+
         contexto_usuario = usuarios.get(usuario, [])
         mensagens = [
             {"role": "system", "content": funil_boas_vindas}
@@ -67,9 +76,13 @@ def gerar_resposta_dany(pergunta, usuario=None):
         )
 
         texto = resposta.choices[0].message.content.strip()
+
+        if nome_cliente:
+            texto = re.sub(r"^(ol[áa]!|oi!?)", f"\\g<0> {nome_cliente}!", texto, flags=re.IGNORECASE)
+
         contexto_usuario.append({"role": "user", "content": pergunta})
         contexto_usuario.append({"role": "assistant", "content": texto})
-        usuarios[usuario] = contexto_usuario[-10:]  # manter um histórico enxuto
+        usuarios[usuario] = contexto_usuario[-10:]
 
         return texto
 
