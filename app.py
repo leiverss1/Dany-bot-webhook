@@ -2,11 +2,11 @@ from flask import Flask, request, jsonify
 import openai
 import os
 from datetime import datetime
+import re
 
 app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# Armazenar nome e dor da cliente por sessão simples (exemplo para testes)
 sessoes = {}
 
 @app.route('/')
@@ -30,24 +30,36 @@ def responder():
     if not mensagem:
         return jsonify({"resposta": "Mensagem vazia."}), 400
 
-    sessao = sessoes.get(usuario, {"nome": None, "dor": None})
+    sessao = sessoes.get(usuario, {"nome": None, "dor": None, "perfil": None})
 
-    # Captura nome se contiver "sou a" ou "me chamo"
+    # Captura nome
     if not sessao["nome"]:
-        if "sou a " in mensagem.lower() or "me chamo " in mensagem.lower():
-            partes = mensagem.split()
-            for i, palavra in enumerate(partes):
-                if palavra.lower() in ["sou", "sou", "chamo"] and i + 1 < len(partes):
-                    nome = partes[i + 1].capitalize()
-                    sessao["nome"] = nome
-                    break
+        nome_match = re.search(r"(?i)me chamo ([A-Za-zÀ-ÿ]+)|sou a ([A-Za-zÀ-ÿ]+)|aqui é a ([A-Za-zÀ-ÿ]+)", mensagem)
+        if nome_match:
+            grupos = nome_match.groups()
+            sessao["nome"] = next((g for g in grupos if g), None)
 
-    # Captura dor (emagrecer, perder barriga, controlar apetite)
+    # Detecta dor
     if not sessao["dor"]:
-        if any(p in mensagem.lower() for p in ["emagrecer", "perder peso", "perder barriga"]):
+        if re.search(r"(?i)perder barriga|abd[oô]men|incha[çc]o", mensagem):
             sessao["dor"] = "perder barriga"
-        elif "apetite" in mensagem.lower():
+        elif re.search(r"(?i)apetite|fome|compuls[ãa]o", mensagem):
             sessao["dor"] = "controlar apetite"
+        elif re.search(r"(?i)emagrecer|perder peso|eliminar kg", mensagem):
+            sessao["dor"] = "emagrecer"
+
+    # Detecta perfil especial
+    if not sessao["perfil"]:
+        if re.search(r"(?i)filhos|m[ãa]e|correria|rotina|trabalho", mensagem):
+            sessao["perfil"] = "mãe ocupada"
+        elif re.search(r"(?i)54 anos|idade|menopausa|lento|metabolismo", mensagem):
+            sessao["perfil"] = "idade/metabolismo lento"
+        elif re.search(r"(?i)vestido|evento|casamento", mensagem):
+            sessao["perfil"] = "evento próximo"
+        elif re.search(r"(?i)vegetariana|vegano|vegana|natural", mensagem):
+            sessao["perfil"] = "vegetariana"
+        elif re.search(r"(?i)autoestima|triste|depress[ãa]o|corpo|espelho", mensagem):
+            sessao["perfil"] = "autoestima"
 
     sessoes[usuario] = sessao
 
@@ -57,44 +69,40 @@ def responder():
 def gerar_resposta_dany(mensagem, sessao):
     nome = sessao.get("nome")
     dor = sessao.get("dor")
+    perfil = sessao.get("perfil")
 
-    prompt_base = f"""
-Você é a Dany, uma consultora de emagrecimento simpática, natural, envolvente e divertida. 
+    contexto = f"Nome da cliente: {nome or 'não informado'}.\n"
+    contexto += f"Dor principal: {dor or 'não detectada'}.\n"
+    contexto += f"Perfil identificado: {perfil or 'não detectado'}.\n"
 
-Sempre que possível, use o nome da cliente (se souber) e mencione a dor dela (como perder barriga ou controlar apetite).
+    prompt = f"""
+Você é Dany, uma consultora de emagrecimento simpática, humana, divertida e vendedora.
 
-Seu objetivo principal é **vender os produtos SB2 Turbo e SB2 Black**, e usar gatilhos como:
-- Frete grátis
-- Resultados reais
-- Segurança e naturalidade
-- Aprovação e garantia
-- Confiança na compra
+Seu papel é acolher a cliente com empatia e alegria, entender a dor ou objetivo dela, e então recomendar o produto SB2 mais adequado (Turbo ou Black), com leveza, explicação e naturalidade.
 
-Quando perguntarem se entrega em alguma cidade, sempre responda com carinho mencionando a cidade e dizendo que entrega em todo o Brasil.
+Regras:
+- Nunca comece cada resposta com "olá" ou "oi" se já houver conversa.
+- Se a cliente disser que quer emagrecer, perder barriga, controlar apetite ou melhorar autoestima, acolha primeiro, incentive, depois recomende o produto.
+- Se identificar um perfil especial (mãe ocupada, menopausa, autoestima, vegana, evento próximo), use isso para personalizar a resposta.
+- Após recomendar, envie link com cuidado e simpatia.
+- Finalize com incentivo (ex: você consegue, tô com você, vai dar certo).
 
-Ao final da conversa, mantenha contato amigável, e se possível continue dando dicas mesmo depois da compra para gerar recompra futura.
-
-Nunca reinicie a conversa com "Olá" em toda resposta. Mantenha o tom humano e de continuidade.
-
-Cliente: {mensagem}
-
-Contexto conhecido:
-- Nome: {nome or "não informado"}
-- Dor: {dor or "não identificada"}
-
+{contexto}
+Mensagem da cliente: {mensagem}
 Responda como Dany:
 """
+
     try:
         resposta = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": prompt_base},
+                {"role": "system", "content": prompt},
                 {"role": "user", "content": mensagem}
             ]
         )
         return resposta.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[ERRO] Falha na geração de resposta: {str(e)}")
+        print(f"[ERRO] Falha ao gerar resposta: {str(e)}")
         return "❌ Ocorreu um erro ao gerar a resposta. Tente novamente mais tarde."
 
 if __name__ == '__main__':
