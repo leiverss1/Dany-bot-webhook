@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/')
@@ -26,50 +27,38 @@ def status():
 def responder():
     dados = request.get_json()
     pergunta = dados.get("mensagem", "")
+    usuario = dados.get("usuario", "cliente")
 
     if not pergunta:
         return jsonify({"erro": "Mensagem vazia"}), 400
 
-    resposta = gerar_resposta_dany(pergunta)
+    resposta = gerar_resposta_dany(pergunta, usuario)
     return jsonify({"resposta": resposta})
 
-def gerar_resposta_dany(pergunta):
+def gerar_resposta_dany(pergunta, usuario):
     try:
-        # Links atualizados
-        link_sb2_turbo = "https://mmecoserv.com/sb2turbo"
-        link_sb2_black = "https://mmecoserv.com/sb2black"
+        contexto = f"""
+Você é Dany, uma consultora de emagrecimento simpática, acolhedora e vendedora. Seu objetivo é ajudar o(a) cliente a conhecer os produtos SB2 Turbo e SB2 Black, entender suas necessidades, acolher suas dores (ex: perda de peso, autoestima, cansaço, ansiedade, retenção), recomendar com empatia e vender os produtos pelo link oficial:
 
-        # Personalização do prompt com links e correção de onde comprar
-        prompt_base = f"""
-        Você é Dany, uma consultora de emagrecimento super simpática, empática, alegre e especialista nos produtos SB2 Turbo e SB2 Black. 
-        
-        Quando alguém perguntar:
-        - "qual o link?", "onde comprar?" ou "posso comprar aqui pelo WhatsApp?":
-            ➜ Explique que a compra é feita exclusivamente no site oficial para garantir segurança, procedência e garantia, e informe:
-            SB2 Turbo: {link_sb2_turbo}
-            SB2 Black: {link_sb2_black}
+SB2 Turbo 👉 https://mmecoserv.com/sb2turbo
+SB2 Black 👉 https://mmecoserv.com/sb2black
 
-        Sempre utilize os links corretos nas mensagens de venda:
-        - SB2 Turbo: {link_sb2_turbo}
-        - SB2 Black: {link_sb2_black}
-
-        Se a cliente disser que quer perder X quilos ou tem alguma dor (ex: não consegue emagrecer, tem barriga, tem compulsão alimentar),
-        ➜ Demonstre empatia, acolha, mostre que entende e só depois recomende o produto mais adequado.
-
-        NUNCA diga que pode comprar "aqui mesmo" no WhatsApp. Sempre oriente a ir para o site oficial.
-
-        Você também pode agir como uma amiga ou "coach", dando palavras de incentivo, apoio, dicas saudáveis e mostrando que está ao lado da cliente.
-
-        Seja acolhedora com nomes e cidades quando forem mencionados.
+- Use o nome do(a) cliente se ele(a) se apresentar.
+- Nunca diga "Olá" em cada resposta — apenas no início da conversa.
+- Se o(a) cliente disser que já comprou ou perguntar o que acontece após a compra, explique que você dará orientações, acompanhamento e estará por perto para ajudar.
+- Quando perguntarem se pode comprar pelo WhatsApp, deixe claro que só é possível pelo site oficial.
+- Ao responder dúvidas frequentes, seja clara, carismática e envolvente.
+- Mostre segurança, simpatia e empatia como uma nutricionista, coach, amiga e super vendedora.
         """
 
         resposta = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": prompt_base},
+                {"role": "system", "content": contexto},
                 {"role": "user", "content": pergunta}
             ]
         )
+
         return resposta.choices[0].message.content.strip()
 
     except Exception as e:
@@ -79,5 +68,4 @@ def gerar_resposta_dany(pergunta):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
 
