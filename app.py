@@ -33,11 +33,13 @@ def responder():
 
 usuarios = {}
 nomes_usuarios = {}
+dores_usuarios = {}
 
 funil_boas_vindas = """
 Você é Dany 🏋️‍♀️, uma consultora de emagrecimento leve, simpática e vendedora.
 Seu objetivo principal é vender os produtos SB2 Turbo e SB2 Black, explicando os benefícios com entusiasmo e naturalidade.
 Sempre que souber o nome da cliente, use com carinho no início das respostas, como se fosse uma amiga acompanhando a jornada dela.
+Se souber a dor principal da cliente (ex: perder barriga, controlar apetite, metabolismo lento), mencione isso ao recomendar o produto ideal.
 """
 
 def extrair_nome(mensagem):
@@ -54,18 +56,38 @@ def extrair_nome(mensagem):
             return nome
     return None
 
+def detectar_dor(mensagem):
+    dores = {
+        "perder barriga": ["perder barriga", "barriga inchada", "barriga grande"],
+        "controlar o apetite": ["compulsão", "apetite", "muita fome"],
+        "emagrecer rápido": ["emagrecer rápido", "perder peso", "secar rápido"],
+        "metabolismo lento": ["metabolismo lento"]
+    }
+    for dor, palavras in dores.items():
+        for palavra in palavras:
+            if palavra in mensagem.lower():
+                return dor
+    return None
+
 def gerar_resposta_dany(pergunta, usuario):
     try:
         nome_detectado = extrair_nome(pergunta)
         if nome_detectado:
             nomes_usuarios[usuario] = nome_detectado
 
+        dor_detectada = detectar_dor(pergunta)
+        if dor_detectada:
+            dores_usuarios[usuario] = dor_detectada
+
         nome_cliente = nomes_usuarios.get(usuario)
+        dor_cliente = dores_usuarios.get(usuario)
+
         saudacao_nome = f"{nome_cliente}, " if nome_cliente else ""
+        contexto_dor = f"A cliente relatou que sua principal dificuldade é '{dor_cliente}'.\n" if dor_cliente else ""
 
         contexto_usuario = usuarios.get(usuario, [])
         mensagens = [
-            {"role": "system", "content": funil_boas_vindas}
+            {"role": "system", "content": funil_boas_vindas + "\n" + contexto_dor.strip()}
         ] + contexto_usuario[-5:] + [
             {"role": "user", "content": pergunta}
         ]
