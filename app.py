@@ -2,14 +2,18 @@ from flask import Flask, request, jsonify
 import openai
 import os
 from datetime import datetime
-import re
 
 app = Flask(__name__)
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/')
 def home():
-    return 'Dany-bot Webhook ativo!'
+    return '''
+    🤖 Dany AI - Webhook Ativo!
+    ✅ Sistema funcionando com OpenAI
+    🕐 Status: ONLINE
+    '''
 
 @app.route('/status')
 def status():
@@ -23,7 +27,7 @@ def status():
 def responder():
     dados = request.get_json()
     pergunta = dados.get("mensagem", "")
-    usuario = dados.get("usuario", "anonimo")
+    usuario = dados.get("usuario", "")
 
     if not pergunta:
         return jsonify({"erro": "Mensagem vazia"}), 400
@@ -31,64 +35,30 @@ def responder():
     resposta = gerar_resposta_dany(pergunta, usuario)
     return jsonify({"resposta": resposta})
 
-usuarios = {}
-nomes_usuarios = {}
-dores_usuarios = {}
-
-funil_boas_vindas = """
-Você é Dany 🏋️‍♀️, uma consultora de emagrecimento leve, simpática e vendedora.
-Seu objetivo principal é vender os produtos SB2 Turbo e SB2 Black, explicando os benefícios com entusiasmo e naturalidade.
-Sempre que souber o nome da cliente, use com carinho no início das respostas, como se fosse uma amiga acompanhando a jornada dela.
-Se souber a dor principal da cliente (ex: perder barriga, controlar apetite, metabolismo lento), mencione isso ao recomendar o produto ideal.
-"""
-
-def extrair_nome(mensagem):
-    padroes = [
-        r"me chamo ([a-zA-Zà-ü]+)",
-        r"sou a ([a-zA-Zà-ü]+)",
-        r"aqui é a ([a-zA-Zà-ü]+)",
-        r"meu nome é ([a-zA-Zà-ü]+)"
-    ]
-    for padrao in padroes:
-        match = re.search(padrao, mensagem.lower())
-        if match:
-            nome = match.group(1).capitalize()
-            return nome
-    return None
-
-def detectar_dor(mensagem):
-    dores = {
-        "perder barriga": ["perder barriga", "barriga inchada", "barriga grande"],
-        "controlar o apetite": ["compulsão", "apetite", "muita fome"],
-        "emagrecer rápido": ["emagrecer rápido", "perder peso", "secar rápido"],
-        "metabolismo lento": ["metabolismo lento"]
-    }
-    for dor, palavras in dores.items():
-        for palavra in palavras:
-            if palavra in mensagem.lower():
-                return dor
-    return None
-
 def gerar_resposta_dany(pergunta, usuario):
     try:
-        nome_detectado = extrair_nome(pergunta)
-        if nome_detectado:
-            nomes_usuarios[usuario] = nome_detectado
+        pergunta_lower = pergunta.lower()
 
-        dor_detectada = detectar_dor(pergunta)
-        if dor_detectada:
-            dores_usuarios[usuario] = dor_detectada
+        # Resposta direta para dúvidas sobre onde comprar
+        if "comprar" in pergunta_lower or "site" in pergunta_lower or "adquirir" in pergunta_lower:
+            return (
+                "Você pode adquirir nossos produtos diretamente pelos links abaixo:\n\n"
+                "🟢 SB2 Turbo: https://mmecoserv.com/sb2turbo\n"
+                "⚫ SB2 Black: https://mmecoserv.com/sb2black\n\n"
+                "Esses são os sites oficiais, com garantia de qualidade e entrega segura. "
+                "Se precisar de ajuda durante o processo de compra, estou aqui pra te ajudar, amiga! 💪😊"
+            )
 
-        nome_cliente = nomes_usuarios.get(usuario)
-        dor_cliente = dores_usuarios.get(usuario)
-
-        saudacao_nome = f"{nome_cliente}, " if nome_cliente else ""
-        contexto_dor = f"A cliente relatou que sua principal dificuldade é '{dor_cliente}'.\n" if dor_cliente else ""
-
-        contexto_usuario = usuarios.get(usuario, [])
+        # Prompt com personalização
         mensagens = [
-            {"role": "system", "content": funil_boas_vindas + "\n" + contexto_dor.strip()}
-        ] + contexto_usuario[-5:] + [
+            {"role": "system", "content": (
+                f"Você é Dany, uma consultora de emagrecimento simpática, acolhedora e vendedora.\n"
+                f"Seu objetivo é ajudar mulheres a conquistarem autoestima e saúde com os produtos SB2 Turbo e SB2 Black.\n"
+                f"Quando souber o nome da cliente, use com carinho.\n"
+                f"Quando ela disser que quer emagrecer, perder barriga, controlar o apetite ou algo parecido, reconheça isso como a dor principal dela e trate com empatia.\n"
+                f"Você pode dar dicas rápidas de emagrecimento para gerar valor, mas sempre volte a apresentar os produtos como solução.\n"
+                f"Finalize as conversas com leveza e encorajamento."
+            )},
             {"role": "user", "content": pergunta}
         ]
 
@@ -97,20 +67,11 @@ def gerar_resposta_dany(pergunta, usuario):
             messages=mensagens
         )
 
-        texto = resposta.choices[0].message.content.strip()
-
-        if nome_cliente:
-            texto = re.sub(r"^(ol[áa]!|oi!?)", f"\\g<0> {nome_cliente}!", texto, flags=re.IGNORECASE)
-
-        contexto_usuario.append({"role": "user", "content": pergunta})
-        contexto_usuario.append({"role": "assistant", "content": texto})
-        usuarios[usuario] = contexto_usuario[-10:]
-
-        return texto
+        return resposta.choices[0].message.content.strip()
 
     except Exception as e:
-        print(f"[ERRO] Falha ao gerar resposta: {str(e)}")
-        return "⚠️ Ocorreu um erro ao gerar a resposta. Tente novamente mais tarde."
+        print(f"[ERRO] Falha na geração de resposta: {str(e)}")
+        return "❌ Ocorreu um erro ao gerar a resposta. Tente novamente mais tarde."
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
