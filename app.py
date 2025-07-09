@@ -1,19 +1,17 @@
 from flask import Flask, request, jsonify
 import openai
 import os
-import re
 from datetime import datetime
 
 app = Flask(__name__)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
+# Armazenar nome e dor da cliente por sessão simples (exemplo para testes)
+sessoes = {}
+
 @app.route('/')
 def home():
-    return '''
-    🤖 Dany AI - Webhook Ativo!
-    ✅ Sistema funcionando com OpenAI
-    🕐 Status: ONLINE
-    '''
+    return '🤖 Dany AI - Webhook funcionando com OpenAI!'
 
 @app.route('/status')
 def status():
@@ -26,71 +24,75 @@ def status():
 @app.route('/dany', methods=['POST'])
 def responder():
     dados = request.get_json()
-    pergunta = dados.get("mensagem", "")
-    usuario = dados.get("usuario", "")
+    mensagem = dados.get("mensagem", "")
+    usuario = dados.get("usuario", "desconhecido")
 
-    if not pergunta:
-        return jsonify({"erro": "Mensagem vazia"}), 400
+    if not mensagem:
+        return jsonify({"resposta": "Mensagem vazia."}), 400
 
-    nome = extrair_nome(pergunta)
-    cidade = extrair_cidade(pergunta)
-    dor = detectar_dor(pergunta)
+    sessao = sessoes.get(usuario, {"nome": None, "dor": None})
 
-    resposta = gerar_resposta_dany(pergunta, nome, cidade, dor)
+    # Captura nome se contiver "sou a" ou "me chamo"
+    if not sessao["nome"]:
+        if "sou a " in mensagem.lower() or "me chamo " in mensagem.lower():
+            partes = mensagem.split()
+            for i, palavra in enumerate(partes):
+                if palavra.lower() in ["sou", "sou", "chamo"] and i + 1 < len(partes):
+                    nome = partes[i + 1].capitalize()
+                    sessao["nome"] = nome
+                    break
+
+    # Captura dor (emagrecer, perder barriga, controlar apetite)
+    if not sessao["dor"]:
+        if any(p in mensagem.lower() for p in ["emagrecer", "perder peso", "perder barriga"]):
+            sessao["dor"] = "perder barriga"
+        elif "apetite" in mensagem.lower():
+            sessao["dor"] = "controlar apetite"
+
+    sessoes[usuario] = sessao
+
+    resposta = gerar_resposta_dany(mensagem, sessao)
     return jsonify({"resposta": resposta})
 
-def extrair_nome(mensagem):
-    padrao = re.search(r"(?i)me chamo ([A-Za-zÀ-ÿ]+)|sou a ([A-Za-zÀ-ÿ]+)|aqui é a ([A-Za-zÀ-ÿ]+)", mensagem)
-    if padrao:
-        grupos = padrao.groups()
-        return next((g for g in grupos if g), None)
-    return None
+def gerar_resposta_dany(mensagem, sessao):
+    nome = sessao.get("nome")
+    dor = sessao.get("dor")
 
-def extrair_cidade(mensagem):
-    padrao = re.search(r"(?i)em ([A-Za-zÀ-ÿ\s]+)|de ([A-Za-zÀ-ÿ\s]+)", mensagem)
-    if padrao:
-        grupos = padrao.groups()
-        return next((g.strip() for g in grupos if g), None)
-    return None
+    prompt_base = f"""
+Você é a Dany, uma consultora de emagrecimento simpática, natural, envolvente e divertida. 
 
-def detectar_dor(mensagem):
-    if re.search(r"(?i)emagrecer|perder peso", mensagem):
-        return "emagrecer"
-    elif re.search(r"(?i)barriga|abdômen", mensagem):
-        return "reduzir barriga"
-    elif re.search(r"(?i)apetite|fome|compulsão", mensagem):
-        return "controlar o apetite"
-    return None
+Sempre que possível, use o nome da cliente (se souber) e mencione a dor dela (como perder barriga ou controlar apetite).
 
-def gerar_resposta_dany(pergunta, nome=None, cidade=None, dor=None):
+Seu objetivo principal é **vender os produtos SB2 Turbo e SB2 Black**, e usar gatilhos como:
+- Frete grátis
+- Resultados reais
+- Segurança e naturalidade
+- Aprovação e garantia
+- Confiança na compra
+
+Quando perguntarem se entrega em alguma cidade, sempre responda com carinho mencionando a cidade e dizendo que entrega em todo o Brasil.
+
+Ao final da conversa, mantenha contato amigável, e se possível continue dando dicas mesmo depois da compra para gerar recompra futura.
+
+Nunca reinicie a conversa com "Olá" em toda resposta. Mantenha o tom humano e de continuidade.
+
+Cliente: {mensagem}
+
+Contexto conhecido:
+- Nome: {nome or "não informado"}
+- Dor: {dor or "não identificada"}
+
+Responda como Dany:
+"""
     try:
-        mensagens = []
-
-        system_msg = "Você é Dany, uma consultora de emagrecimento simpática, acolhedora e divertida. Seu papel é vender os produtos SB2 Turbo e SB2 Black, oferecendo respostas personalizadas, mencionando o nome da cliente se disponível, reconhecendo cidades citadas, e utilizando emojis e linguagem leve. Ao final de cada compra ou dúvida respondida, incentive com simpatia e esteja disponível para ajudar mais."
-        mensagens.append({"role": "system", "content": system_msg})
-
-        prompt_usuario = pergunta
-        contexto = []
-
-        if nome:
-            contexto.append(f"O nome da cliente é {nome}.")
-        if cidade:
-            contexto.append(f"Ela é da cidade de {cidade}.")
-        if dor:
-            contexto.append(f"Ela mencionou a dor principal: {dor}.")
-
-        if contexto:
-            prompt_usuario = "\n".join(contexto) + "\n" + pergunta
-
-        mensagens.append({"role": "user", "content": prompt_usuario})
-
         resposta = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=mensagens
+            messages=[
+                {"role": "system", "content": prompt_base},
+                {"role": "user", "content": mensagem}
+            ]
         )
-
         return resposta.choices[0].message.content.strip()
-
     except Exception as e:
         print(f"[ERRO] Falha na geração de resposta: {str(e)}")
         return "❌ Ocorreu um erro ao gerar a resposta. Tente novamente mais tarde."
