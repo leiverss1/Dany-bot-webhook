@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
 import openai
 import os
+import re
 from datetime import datetime
 
 app = Flask(__name__)
-
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/')
@@ -32,35 +32,57 @@ def responder():
     if not pergunta:
         return jsonify({"erro": "Mensagem vazia"}), 400
 
-    resposta = gerar_resposta_dany(pergunta, usuario)
+    nome = extrair_nome(pergunta)
+    cidade = extrair_cidade(pergunta)
+    dor = detectar_dor(pergunta)
+
+    resposta = gerar_resposta_dany(pergunta, nome, cidade, dor)
     return jsonify({"resposta": resposta})
 
-def gerar_resposta_dany(pergunta, usuario):
+def extrair_nome(mensagem):
+    padrao = re.search(r"(?i)me chamo ([A-Za-zÀ-ÿ]+)|sou a ([A-Za-zÀ-ÿ]+)|aqui é a ([A-Za-zÀ-ÿ]+)", mensagem)
+    if padrao:
+        grupos = padrao.groups()
+        return next((g for g in grupos if g), None)
+    return None
+
+def extrair_cidade(mensagem):
+    padrao = re.search(r"(?i)em ([A-Za-zÀ-ÿ\s]+)|de ([A-Za-zÀ-ÿ\s]+)", mensagem)
+    if padrao:
+        grupos = padrao.groups()
+        return next((g.strip() for g in grupos if g), None)
+    return None
+
+def detectar_dor(mensagem):
+    if re.search(r"(?i)emagrecer|perder peso", mensagem):
+        return "emagrecer"
+    elif re.search(r"(?i)barriga|abdômen", mensagem):
+        return "reduzir barriga"
+    elif re.search(r"(?i)apetite|fome|compulsão", mensagem):
+        return "controlar o apetite"
+    return None
+
+def gerar_resposta_dany(pergunta, nome=None, cidade=None, dor=None):
     try:
-        pergunta_lower = pergunta.lower()
+        mensagens = []
 
-        # Resposta direta para dúvidas sobre onde comprar
-        if "comprar" in pergunta_lower or "site" in pergunta_lower or "adquirir" in pergunta_lower:
-            return (
-                "Você pode adquirir nossos produtos diretamente pelos links abaixo:\n\n"
-                "🟢 SB2 Turbo: https://mmecoserv.com/sb2turbo\n"
-                "⚫ SB2 Black: https://mmecoserv.com/sb2black\n\n"
-                "Esses são os sites oficiais, com garantia de qualidade e entrega segura. "
-                "Se precisar de ajuda durante o processo de compra, estou aqui pra te ajudar, amiga! 💪😊"
-            )
+        system_msg = "Você é Dany, uma consultora de emagrecimento simpática, acolhedora e divertida. Seu papel é vender os produtos SB2 Turbo e SB2 Black, oferecendo respostas personalizadas, mencionando o nome da cliente se disponível, reconhecendo cidades citadas, e utilizando emojis e linguagem leve. Ao final de cada compra ou dúvida respondida, incentive com simpatia e esteja disponível para ajudar mais."
+        mensagens.append({"role": "system", "content": system_msg})
 
-        # Prompt com personalização
-        mensagens = [
-            {"role": "system", "content": (
-                f"Você é Dany, uma consultora de emagrecimento simpática, acolhedora e vendedora.\n"
-                f"Seu objetivo é ajudar mulheres a conquistarem autoestima e saúde com os produtos SB2 Turbo e SB2 Black.\n"
-                f"Quando souber o nome da cliente, use com carinho.\n"
-                f"Quando ela disser que quer emagrecer, perder barriga, controlar o apetite ou algo parecido, reconheça isso como a dor principal dela e trate com empatia.\n"
-                f"Você pode dar dicas rápidas de emagrecimento para gerar valor, mas sempre volte a apresentar os produtos como solução.\n"
-                f"Finalize as conversas com leveza e encorajamento."
-            )},
-            {"role": "user", "content": pergunta}
-        ]
+        prompt_usuario = pergunta
+        contexto = []
+
+        if nome:
+            contexto.append(f"O nome da cliente é {nome}.")
+        if cidade:
+            contexto.append(f"Ela é da cidade de {cidade}.")
+        if dor:
+            contexto.append(f"Ela mencionou a dor principal: {dor}.")
+
+        if contexto:
+            prompt_usuario = "\n".join(contexto) + "\n" + pergunta
+
+        mensagens.append({"role": "user", "content": prompt_usuario})
 
         resposta = openai.chat.completions.create(
             model="gpt-3.5-turbo",
