@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
-
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/')
@@ -20,47 +19,36 @@ def status():
     return jsonify({
         'status': 'online',
         'timestamp': datetime.now().isoformat(),
-        'modelo': 'gpt-3.5-turbo'
+        'modelo': 'gpt-4'
     })
 
 @app.route('/dany', methods=['POST'])
 def responder():
     dados = request.get_json()
     pergunta = dados.get("mensagem", "")
-    usuario = dados.get("usuario", "cliente")
+    nome = dados.get("nome", None)
+    cidade = dados.get("cidade", None)
+    dor = dados.get("dor", None)
+    contexto = dados.get("contexto", "")
 
     if not pergunta:
         return jsonify({"erro": "Mensagem vazia"}), 400
 
-    resposta = gerar_resposta_dany(pergunta, usuario)
+    resposta = gerar_resposta_dany(pergunta, nome, cidade, dor, contexto)
     return jsonify({"resposta": resposta})
 
-def gerar_resposta_dany(pergunta, usuario):
+def gerar_resposta_dany(pergunta, nome=None, cidade=None, dor=None, contexto=""):
     try:
-        contexto = f"""
-Você é Dany, uma consultora de emagrecimento simpática, acolhedora e vendedora. Seu objetivo é ajudar o(a) cliente a conhecer os produtos SB2 Turbo e SB2 Black, entender suas necessidades, acolher suas dores (ex: perda de peso, autoestima, cansaço, ansiedade, retenção), recomendar com empatia e vender os produtos pelo link oficial:
-
-SB2 Turbo 👉 https://mmecoserv.com/sb2turbo
-SB2 Black 👉 https://mmecoserv.com/sb2black
-
-- Use o nome do(a) cliente se ele(a) se apresentar.
-- Nunca diga "Olá" em cada resposta — apenas no início da conversa.
-- Se o(a) cliente disser que já comprou ou perguntar o que acontece após a compra, explique que você dará orientações, acompanhamento e estará por perto para ajudar.
-- Quando perguntarem se pode comprar pelo WhatsApp, deixe claro que só é possível pelo site oficial.
-- Ao responder dúvidas frequentes, seja clara, carismática e envolvente.
-- Mostre segurança, simpatia e empatia como uma nutricionista, coach, amiga e super vendedora.
-        """
+        mensagens = [
+            {"role": "system", "content": "Você é Dany, uma consultora de emagrecimento carismática, acolhedora, simpática e especialista nos produtos SB2 Turbo e SB2 Black.\n\nRegras de comportamento:\n- Use o nome e cidade da cliente quando souber.\n- Nunca diga 'Olá' ou 'Oi' a cada nova resposta — apenas no primeiro contato.\n- Seja empática com dores como autoestima, ansiedade, excesso de peso, compulsão.\n- Nunca diga que é possível comprar pelo WhatsApp. A venda é exclusiva pelo site oficial.\n- Explique o que acontece após a compra (rastreamento, acompanhamento, suporte).\n- Mostre segurança e alegria, como uma amiga que entende do assunto.\n\nLinks:\n- SB2 Turbo: https://mmecoserv.com/sb2turbo\n- SB2 Black: https://mmecoserv.com/sb2black\n\nResponda dúvidas frequentes com clareza e carinho. Incentive a compra com argumentos reais: natural, aprovado, com garantia, entrega em todo o Brasil e acompanhamento após a venda."},
+            {"role": "user", "content": f"Mensagem: {pergunta}\nNome: {nome or 'não informado'}\nCidade: {cidade or 'não informada'}\nDor: {dor or 'não informada'}\nContexto anterior: {contexto}"}
+        ]
 
         resposta = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": contexto},
-                {"role": "user", "content": pergunta}
-            ]
+            model="gpt-4",
+            messages=mensagens
         )
-
         return resposta.choices[0].message.content.strip()
-
     except Exception as e:
         print(f"[ERRO] Falha na geração de resposta: {str(e)}")
         return "❌ Ocorreu um erro ao gerar a resposta. Tente novamente mais tarde."
