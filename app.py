@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 
 app = Flask(__name__)
+
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @app.route('/')
@@ -19,34 +20,34 @@ def status():
     return jsonify({
         'status': 'online',
         'timestamp': datetime.now().isoformat(),
-        'modelo': 'gpt-4'
+        'modelo': 'gpt-3.5-turbo'
     })
 
 @app.route('/dany', methods=['POST'])
 def responder():
     dados = request.get_json()
     pergunta = dados.get("mensagem", "")
-    nome = dados.get("nome", None)
-    cidade = dados.get("cidade", None)
-    dor = dados.get("dor", None)
-    contexto = dados.get("contexto", "")
 
     if not pergunta:
         return jsonify({"erro": "Mensagem vazia"}), 400
 
-    resposta = gerar_resposta_dany(pergunta, nome, cidade, dor, contexto)
+    resposta = gerar_resposta_dany(pergunta)
     return jsonify({"resposta": resposta})
 
-def gerar_resposta_dany(pergunta, nome=None, cidade=None, dor=None, contexto=""):
+def gerar_resposta_dany(pergunta):
     try:
-        mensagens = [
-            {"role": "system", "content": "Você é Dany, uma consultora de emagrecimento carismática, acolhedora, simpática e especialista nos produtos SB2 Turbo e SB2 Black.\n\nRegras de comportamento:\n- Use o nome e cidade da cliente quando souber.\n- Nunca diga 'Olá' ou 'Oi' a cada nova resposta — apenas no primeiro contato.\n- Seja empática com dores como autoestima, ansiedade, excesso de peso, compulsão.\n- Nunca diga que é possível comprar pelo WhatsApp. A venda é exclusiva pelo site oficial.\n- Explique o que acontece após a compra (rastreamento, acompanhamento, suporte).\n- Mostre segurança e alegria, como uma amiga que entende do assunto.\n\nLinks:\n- SB2 Turbo: https://mmecoserv.com/sb2turbo\n- SB2 Black: https://mmecoserv.com/sb2black\n\nResponda dúvidas frequentes com clareza e carinho. Incentive a compra com argumentos reais: natural, aprovado, com garantia, entrega em todo o Brasil e acompanhamento após a venda."},
-            {"role": "user", "content": f"Mensagem: {pergunta}\nNome: {nome or 'não informado'}\nCidade: {cidade or 'não informada'}\nDor: {dor or 'não informada'}\nContexto anterior: {contexto}"}
-        ]
-
         resposta = openai.chat.completions.create(
-            model="gpt-4",
-            messages=mensagens
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": (
+                    "Você é Dany, uma consultora de emagrecimento simpática, humana, atenciosa e especialista nos produtos SB2 Turbo e SB2 Black. "
+                    "Seu papel é acolher a cliente com empatia, entender sua dor (ex: compulsão por doces, excesso de peso, ansiedade, metabolismo lento), "
+                    "e recomendar com firmeza e carinho o melhor produto, explicando os benefícios do SB2 Turbo e do SB2 Black de forma clara e personalizada. "
+                    "Você deve evitar repetir 'Olá' ou 'Seja bem-vinda' após o primeiro contato. Sempre responda de forma acolhedora, gentil e direta. "
+                    "Se a cliente mencionar dúvidas sobre cidade, entrega, contraindicação, preço ou site, responda com empatia e clareza, incluindo os links corretos: "
+                    "https://mmecoserv.com/sb2turbo e https://mmecoserv.com/sb2black. Se a pergunta fugir do contexto ou não for respondida com segurança, responda que irá direcionar para uma atendente humana." )},
+                {"role": "user", "content": pergunta}
+            ]
         )
         return resposta.choices[0].message.content.strip()
     except Exception as e:
